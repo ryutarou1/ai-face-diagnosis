@@ -3,7 +3,39 @@ import { NextRequest, NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+// 簡易レート制限（メモリベース、本番ではRedis推奨）
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_PER_MINUTE = 30; // 安全マージンを持たせる
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(ip);
+
+  if (!record || now > record.resetTime) {
+    requestCounts.set(ip, { count: 1, resetTime: now + 60000 });
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_PER_MINUTE) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+
+  // レート制限チェック
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "リクエストが多すぎます。1分後に再試行してください。" },
+      { status: 429 }
+    );
+  }
+
   try {
     const { image } = await request.json();
 

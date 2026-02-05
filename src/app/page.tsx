@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { logApiCall, trackEvent } from "@/lib/analytics";
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
@@ -24,6 +25,8 @@ export default function Home() {
     if (!image) return;
 
     setLoading(true);
+    const startTime = Date.now();
+
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -31,13 +34,22 @@ export default function Home() {
         body: JSON.stringify({ image }),
       });
 
+      const responseTime = Date.now() - startTime;
       const data = await response.json();
+
       if (data.error) {
+        logApiCall("/api/analyze", false, responseTime);
+        trackEvent("diagnosis_error", { error: data.error });
         alert(data.error);
       } else {
+        logApiCall("/api/analyze", true, responseTime);
+        trackEvent("diagnosis_complete", { responseTime });
         setResult(data.result);
       }
     } catch (error) {
+      const responseTime = Date.now() - startTime;
+      logApiCall("/api/analyze", false, responseTime);
+      trackEvent("diagnosis_error", { error: "network_error" });
       alert("エラーが発生しました");
     } finally {
       setLoading(false);
@@ -45,6 +57,7 @@ export default function Home() {
   };
 
   const shareToTwitter = () => {
+    trackEvent("share_twitter");
     const text = encodeURIComponent(
       "AI顔診断やってみた！あなたもやってみて👀\n#AI顔診断 #顔診断"
     );
