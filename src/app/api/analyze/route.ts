@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `あなたは顔診断の専門家です。この顔写真を分析して、以下の形式で日本語で診断結果を返してください。
 
